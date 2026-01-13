@@ -1,0 +1,33 @@
+{
+  "reviews": [
+    {
+      "file_path": "path/to/file.go",
+      "line_number_start": 123,
+      "line_number_end": 125,
+      "type": "performance",
+      "review": "Consider using a more efficient algorithm here. The current O(n²) complexity could be improved to O(n log n) by using a sorted data structure."
+    },
+    {
+      "file_path": "src/utils.go",
+      "line_number_start": 42,
+      "line_number_end": 42,
+      "type": "issue",
+      "review": "Potential null pointer dereference. Add nil check before accessing this field."
+    },
+    {
+      "file_path": "api/handler.go",
+      "line_number_start": 200,
+      "line_number_end": 205,
+      "type": "scalability",
+      "review": "This database query could become a bottleneck at scale. Consider adding pagination or caching."
+    },
+    {
+      "file_path": "internal/service.go",
+      "line_number_start": 78,
+      "line_number_end": 78,
+      "type": "code_smell",
+      "review": "This function is doing too many things. Consider breaking it down into smaller, more focused functions."
+    }
+  ]
+}
+
