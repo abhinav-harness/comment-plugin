@@ -1,0 +1,26 @@
+kind: pipeline
+type: docker
+name: default
+
+steps:
+  - name: test
+    image: golang:1.21
+    commands:
+      - go test -v ./...
+
+  - name: build
+    image: golang:1.21
+    commands:
+      - CGO_ENABLED=0 go build -o comment-plugin ./cmd/plugin
+
+  - name: docker
+    image: plugins/docker
+    settings:
+      repo: plugins/comment
+      auto_tag: true
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+    when:
+      event: [push, tag]
