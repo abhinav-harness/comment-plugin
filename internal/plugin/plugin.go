@@ -2,7 +2,9 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/abhinav-harness/comment-plugin/internal/harness"
@@ -68,6 +70,10 @@ func (p *Plugin) Execute(ctx context.Context) error {
 	}
 
 	// Determine what action to take
+	if p.config.CommentsFile != "" {
+		return p.createCommentsFromFile(ctx)
+	}
+
 	if p.config.StatusState != "" {
 		return p.createStatus(ctx)
 	}
@@ -80,7 +86,52 @@ func (p *Plugin) Execute(ctx context.Context) error {
 		return p.createComment(ctx)
 	}
 
-	return fmt.Errorf("no action: provide COMMENT_BODY, FILE_PATH+LINE, or STATUS_STATE")
+	return fmt.Errorf("no action: provide COMMENT_BODY, FILE_PATH+LINE, COMMENTS_FILE, or STATUS_STATE")
+}
+
+func (p *Plugin) createCommentsFromFile(ctx context.Context) error {
+	if p.config.PRNumber == 0 {
+		return fmt.Errorf("PR_NUMBER is required")
+	}
+
+	// Read and parse the JSON file
+	data, err := os.ReadFile(p.config.CommentsFile)
+	if err != nil {
+		return fmt.Errorf("failed to read comments file: %w", err)
+	}
+
+	var comments []harness.CodeComment
+	if err := json.Unmarshal(data, &comments); err != nil {
+		return fmt.Errorf("failed to parse comments file: %w", err)
+	}
+
+	p.log.WithFields(logrus.Fields{
+		"file":  p.config.CommentsFile,
+		"count": len(comments),
+	}).Info("loaded comments from file")
+
+	// Harness Code
+	if p.harness != nil {
+		return p.harness.CreateCodeComments(ctx, p.config.Repo, p.config.PRNumber, comments)
+	}
+
+	// For other SCM providers, use go-scm Reviews API
+	for _, comment := range comments {
+		input := &scm.ReviewInput{
+			Body: comment.Text,
+			Path: comment.Path,
+			Line: comment.LineEnd,
+			Sha:  comment.SourceCommitSHA,
+		}
+
+		_, _, err := p.client.Reviews.Create(ctx, p.config.Repo, p.config.PRNumber, input)
+		if err != nil {
+			p.log.WithError(err).WithField("path", comment.Path).Warn("failed to create comment")
+		}
+	}
+
+	p.log.WithField("count", len(comments)).Info("finished creating comments from file")
+	return nil
 }
 
 func (p *Plugin) createComment(ctx context.Context) error {

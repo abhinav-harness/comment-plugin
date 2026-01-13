@@ -86,6 +86,47 @@ steps:
       comment_body: "Pipeline complete! 🚀"
 ```
 
+### Batch Comments from JSON File
+
+Post multiple inline comments from a JSON file (useful for code review bots, linters, etc.):
+
+```yaml
+steps:
+  - name: batch-comments
+    image: abhinavharness/comment-plugin
+    settings:
+      scm_provider: harness
+      token:
+        from_secret: harness_token
+      harness_account_id: ACCOUNT_ID
+      repo: my-repo
+      pr_number: ${PR_NUMBER}
+      comments_file: /path/to/comments.json
+```
+
+**JSON file format:**
+
+```json
+[
+  {
+    "text": "Consider refactoring this function for better performance",
+    "line_start": 42,
+    "line_end": 42,
+    "path": "src/main.go",
+    "source_commit_sha": "abc123...",
+    "target_commit_sha": "def456..."
+  },
+  {
+    "text": "This could cause a memory leak",
+    "line_start": 100,
+    "line_end": 105,
+    "path": "src/utils.go",
+    "source_commit_sha": "abc123...",
+    "target_commit_sha": "def456..."
+  }
+]
+```
+
 ### Harness CI Pipeline
 
 ```yaml
@@ -116,6 +157,7 @@ steps:
 | `comment_body` | | Comment text |
 | `file_path` | | File path (for inline comments) |
 | `line` | | Line number (for inline comments) |
+| `comments_file` | | Path to JSON file with array of comments |
 | `status_state` | | `pending`, `success`, `failure`, `error` |
 | `status_context` | | Status check name |
 | `status_desc` | | Status description |

@@ -14,10 +14,13 @@ type Config struct {
 
 	// Comment
 	CommentBody string `envconfig:"COMMENT_BODY"`
-	
+
 	// Inline Comment
 	FilePath string `envconfig:"FILE_PATH"`
 	Line     int    `envconfig:"LINE"`
+
+	// Batch Comments from JSON file
+	CommentsFile string `envconfig:"COMMENTS_FILE"` // Path to JSON file with array of comments
 
 	// Status
 	StatusState   string `envconfig:"STATUS_STATE"`
@@ -33,4 +36,17 @@ type Config struct {
 	// Debug
 	Debug  bool `envconfig:"DEBUG"`
 	DryRun bool `envconfig:"DRY_RUN"`
+}
+
+// CodeComment represents a single code comment from the JSON file
+type CodeComment struct {
+	Text            string `json:"text"`
+	LineStart       int    `json:"line_start"`
+	LineEnd         int    `json:"line_end"`
+	LineStartNew    bool   `json:"line_start_new"`
+	LineEndNew      bool   `json:"line_end_new"`
+	Path            string `json:"path"`
+	SourceCommitSHA string `json:"source_commit_sha"`
+	TargetCommitSHA string `json:"target_commit_sha"`
+	ParentID        int    `json:"parent_id,omitempty"`
 }

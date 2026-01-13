@@ -136,6 +136,66 @@ func (c *Client) getPR(ctx context.Context, repo string, prNumber int) (*prInfo,
 	return &pr, nil
 }
 
+// CodeComment represents a code comment with all fields
+type CodeComment struct {
+	Text            string `json:"text"`
+	LineStart       int    `json:"line_start"`
+	LineEnd         int    `json:"line_end"`
+	LineStartNew    bool   `json:"line_start_new"`
+	LineEndNew      bool   `json:"line_end_new"`
+	Path            string `json:"path"`
+	SourceCommitSHA string `json:"source_commit_sha"`
+	TargetCommitSHA string `json:"target_commit_sha"`
+	ParentID        int    `json:"parent_id,omitempty"`
+}
+
+// CreateCodeComment creates a code comment with full control over all fields
+func (c *Client) CreateCodeComment(ctx context.Context, repo string, prNumber int, comment CodeComment) error {
+	path := c.apiPath(repo, fmt.Sprintf("pullreq/%d/comments", prNumber))
+
+	payload := map[string]interface{}{
+		"text":              comment.Text,
+		"path":              comment.Path,
+		"line_start":        comment.LineStart,
+		"line_end":          comment.LineEnd,
+		"source_commit_sha": comment.SourceCommitSHA,
+		"target_commit_sha": comment.TargetCommitSHA,
+	}
+
+	if comment.ParentID > 0 {
+		payload["parent_id"] = comment.ParentID
+	}
+
+	resp, err := c.do(ctx, http.MethodPost, path, payload)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := c.checkResponse(resp); err != nil {
+		return fmt.Errorf("failed to create code comment: %w", err)
+	}
+
+	c.log.WithFields(logrus.Fields{
+		"file":       comment.Path,
+		"line_start": comment.LineStart,
+		"line_end":   comment.LineEnd,
+	}).Info("created code comment")
+	return nil
+}
+
+// CreateCodeComments creates multiple code comments from a slice
+func (c *Client) CreateCodeComments(ctx context.Context, repo string, prNumber int, comments []CodeComment) error {
+	for i, comment := range comments {
+		if err := c.CreateCodeComment(ctx, repo, prNumber, comment); err != nil {
+			c.log.WithError(err).WithField("index", i).Warn("failed to create comment")
+			// Continue with remaining comments
+		}
+	}
+	c.log.WithField("count", len(comments)).Info("finished creating code comments")
+	return nil
+}
+
 // CreateStatus creates a commit status check
 func (c *Client) CreateStatus(ctx context.Context, repo, commitSHA, state, statusContext, description, targetURL string) error {
 	path := c.apiPath(repo, fmt.Sprintf("commits/%s/checks", commitSHA))
