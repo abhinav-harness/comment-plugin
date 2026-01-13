@@ -94,18 +94,38 @@ func (p *Plugin) createCommentsFromFile(ctx context.Context) error {
 		return fmt.Errorf("PR_NUMBER is required")
 	}
 
-	// Read and parse the JSON file
+	// Check if file exists
+	if _, err := os.Stat(p.config.CommentsFile); os.IsNotExist(err) {
+		p.log.WithField("file", p.config.CommentsFile).Warn("comments file not found, skipping")
+		return nil
+	}
+
+	// Read the JSON file
 	data, err := os.ReadFile(p.config.CommentsFile)
 	if err != nil {
 		return fmt.Errorf("failed to read comments file: %w", err)
 	}
 
+	// Handle empty file
+	if len(data) == 0 {
+		p.log.WithField("file", p.config.CommentsFile).Warn("comments file is empty, skipping")
+		return nil
+	}
+
+	// Parse JSON
 	var reviewsFile ReviewsFile
 	if err := json.Unmarshal(data, &reviewsFile); err != nil {
 		return fmt.Errorf("failed to parse comments file: %w", err)
 	}
 
 	reviews := reviewsFile.Reviews
+
+	// Handle empty reviews array
+	if len(reviews) == 0 {
+		p.log.WithField("file", p.config.CommentsFile).Info("no reviews in file, nothing to post")
+		return nil
+	}
+
 	p.log.WithFields(logrus.Fields{
 		"file":  p.config.CommentsFile,
 		"count": len(reviews),
