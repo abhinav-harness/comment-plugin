@@ -1,80 +1,107 @@
 # Comment Plugin
 
-[![Build](https://github.com/abhinav-harness/comment-plugin/actions/workflows/build.yml/badge.svg)](https://github.com/abhinav-harness/comment-plugin)
+A Drone/Harness CI plugin to post comments on pull requests using [go-scm](https://github.com/drone/go-scm).
 
-Drone plugin to post comments on PRs using [go-scm](https://github.com/drone/go-scm).
+## Docker Image
+
+```
+docker pull abhinavharness/comment-plugin
+```
 
 ## Supported Providers
 
-- GitHub / GitHub Enterprise
-- GitLab
-- Bitbucket Cloud / Server
-- Gitea / Gogs
-- **Harness Code**
+| Provider | PR Comments | Inline Comments | Status |
+|----------|-------------|-----------------|--------|
+| GitHub | ✅ | ✅ | ✅ |
+| GitLab | ✅ | ✅ | ✅ |
+| Bitbucket | ✅ | ✅ | ✅ |
+| Gitea | ✅ | ✅ | ✅ |
+| Gogs | ✅ | ✅ | ✅ |
+| **Harness Code** | ✅ | ✅ | ✅ |
 
 ## Usage
 
 ### PR Comment
 
 ```yaml
-- name: comment
-  image: plugins/comment
-  settings:
-    scm_provider: github
-    token:
-      from_secret: github_token
-    repo: owner/repo
-    pr_number: ${DRONE_PULL_REQUEST}
-    comment_body: "Build passed! ✅"
+steps:
+  - name: comment
+    image: abhinavharness/comment-plugin
+    settings:
+      scm_provider: github
+      token:
+        from_secret: github_token
+      repo: owner/repo
+      pr_number: ${DRONE_PULL_REQUEST}
+      comment_body: "Build passed! ✅"
 ```
 
-### Inline Comment
+### Inline Code Comment
 
 ```yaml
-- name: comment
-  image: plugins/comment
-  settings:
-    scm_provider: github
-    token:
-      from_secret: github_token
-    repo: owner/repo
-    pr_number: ${DRONE_PULL_REQUEST}
-    file_path: src/main.go
-    line: 42
-    comment_body: "Consider refactoring"
+steps:
+  - name: comment
+    image: abhinavharness/comment-plugin
+    settings:
+      scm_provider: github
+      token:
+        from_secret: github_token
+      repo: owner/repo
+      pr_number: ${DRONE_PULL_REQUEST}
+      file_path: src/main.go
+      line: 42
+      comment_body: "Consider refactoring this function"
 ```
 
 ### Commit Status
 
 ```yaml
-- name: status
-  image: plugins/comment
-  settings:
-    scm_provider: github
-    token:
-      from_secret: github_token
-    repo: owner/repo
-    commit_sha: ${DRONE_COMMIT_SHA}
-    status_state: success
-    status_context: ci/build
-    status_desc: Build passed
+steps:
+  - name: status
+    image: abhinavharness/comment-plugin
+    settings:
+      scm_provider: github
+      token:
+        from_secret: github_token
+      repo: owner/repo
+      commit_sha: ${DRONE_COMMIT_SHA}
+      status_state: success
+      status_context: ci/build
+      status_desc: Build passed
 ```
 
 ### Harness Code
 
 ```yaml
-- name: comment
-  image: plugins/comment
-  settings:
-    scm_provider: harness
-    token:
-      from_secret: harness_token
-    harness_account_id: ${ACCOUNT_ID}
-    harness_org_id: ${ORG_ID}
-    harness_project_id: ${PROJECT_ID}
-    repo: my-repo
-    pr_number: ${PR_NUMBER}
-    comment_body: "Pipeline complete! 🚀"
+steps:
+  - name: comment
+    image: abhinavharness/comment-plugin
+    settings:
+      scm_provider: harness
+      token:
+        from_secret: harness_token
+      harness_account_id: ACCOUNT_ID
+      repo: my-repo
+      pr_number: ${PR_NUMBER}
+      comment_body: "Pipeline complete! 🚀"
+```
+
+### Harness CI Pipeline
+
+```yaml
+- step:
+    type: Plugin
+    name: Comment
+    spec:
+      connectorRef: dockerhub
+      image: abhinavharness/comment-plugin
+      settings:
+        scm_provider: harness
+        token: <+secrets.getValue("harness_token")>
+        harness_account_id: <+account.identifier>
+        repo: <+pipeline.properties.ci.codebase.repoName>
+        pr_number: <+codebase.prNumber>
+        comment_body: "Build complete! ✅"
 ```
 
 ## Configuration
@@ -82,29 +109,40 @@ Drone plugin to post comments on PRs using [go-scm](https://github.com/drone/go-
 | Setting | Required | Description |
 |---------|----------|-------------|
 | `scm_provider` | ✅ | `github`, `gitlab`, `bitbucket`, `gitea`, `gogs`, `harness` |
-| `token` | ✅ | Auth token |
-| `repo` | ✅ | `owner/repo` |
-| `pr_number` | | PR number |
+| `token` | ✅ | Authentication token |
+| `repo` | ✅ | Repository (`owner/repo` or just `repo` for Harness) |
+| `pr_number` | | Pull request number (for comments) |
 | `commit_sha` | | Commit SHA (for status) |
 | `comment_body` | | Comment text |
-| `file_path` | | File path (inline) |
-| `line` | | Line number (inline) |
+| `file_path` | | File path (for inline comments) |
+| `line` | | Line number (for inline comments) |
 | `status_state` | | `pending`, `success`, `failure`, `error` |
-| `status_context` | | Status name |
+| `status_context` | | Status check name |
 | `status_desc` | | Status description |
-| `scm_endpoint` | | Custom API endpoint |
+| `status_url` | | Link URL for status |
+| `scm_endpoint` | | Custom API endpoint (for self-hosted) |
 
-### Harness Settings
+### Harness Code Settings
 
 | Setting | Description |
 |---------|-------------|
-| `harness_account_id` | Account ID |
-| `harness_org_id` | Org ID |
-| `harness_project_id` | Project ID |
+| `harness_account_id` | Harness account ID |
+| `harness_org_id` | Harness org ID (optional) |
+| `harness_project_id` | Harness project ID (optional) |
 
 ## Build
 
 ```bash
+# Build binary
 go build -o comment-plugin ./cmd/plugin
-docker build -t plugins/comment .
+
+# Build Docker image
+docker build -t comment-plugin .
+
+# Run tests
+go test ./...
 ```
+
+## License
+
+Apache 2.0
