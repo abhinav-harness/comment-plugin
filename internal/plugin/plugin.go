@@ -100,38 +100,89 @@ func (p *Plugin) createCommentsFromFile(ctx context.Context) error {
 		return fmt.Errorf("failed to read comments file: %w", err)
 	}
 
-	var comments []harness.CodeComment
-	if err := json.Unmarshal(data, &comments); err != nil {
+	var reviewsFile ReviewsFile
+	if err := json.Unmarshal(data, &reviewsFile); err != nil {
 		return fmt.Errorf("failed to parse comments file: %w", err)
 	}
 
+	reviews := reviewsFile.Reviews
 	p.log.WithFields(logrus.Fields{
 		"file":  p.config.CommentsFile,
-		"count": len(comments),
-	}).Info("loaded comments from file")
+		"count": len(reviews),
+	}).Info("loaded reviews from file")
 
 	// Harness Code
 	if p.harness != nil {
-		return p.harness.CreateCodeComments(ctx, p.config.Repo, p.config.PRNumber, comments)
+		// Get PR details to fetch commit SHAs
+		pr, err := p.getPRDetails(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get PR details: %w", err)
+		}
+
+		// Create each review comment
+		for i, review := range reviews {
+			err := p.harness.CreateReviewComment(
+				ctx,
+				p.config.Repo,
+				p.config.PRNumber,
+				review.FilePath,
+				review.LineNumberStart,
+				review.LineNumberEnd,
+				review.Type,
+				review.Review,
+				pr.SourceSHA,
+				pr.TargetSHA,
+			)
+			if err != nil {
+				p.log.WithError(err).WithField("index", i).Warn("failed to create review comment")
+				// Continue with remaining comments
+			}
+		}
+
+		p.log.WithField("count", len(reviews)).Info("finished creating review comments")
+		return nil
 	}
 
 	// For other SCM providers, use go-scm Reviews API
-	for _, comment := range comments {
+	for i, review := range reviews {
+		commentText := review.Review
+		if review.Type != "" {
+			commentText = fmt.Sprintf("**%s:** %s", review.Type, review.Review)
+		}
+
 		input := &scm.ReviewInput{
-			Body: comment.Text,
-			Path: comment.Path,
-			Line: comment.LineEnd,
-			Sha:  comment.SourceCommitSHA,
+			Body: commentText,
+			Path: review.FilePath,
+			Line: review.LineNumberEnd,
+			Sha:  p.config.CommitSHA,
 		}
 
 		_, _, err := p.client.Reviews.Create(ctx, p.config.Repo, p.config.PRNumber, input)
 		if err != nil {
-			p.log.WithError(err).WithField("path", comment.Path).Warn("failed to create comment")
+			p.log.WithError(err).WithField("index", i).WithField("path", review.FilePath).Warn("failed to create review comment")
 		}
 	}
 
-	p.log.WithField("count", len(comments)).Info("finished creating comments from file")
+	p.log.WithField("count", len(reviews)).Info("finished creating review comments from file")
 	return nil
+}
+
+func (p *Plugin) getPRDetails(ctx context.Context) (*harness.PRDetails, error) {
+	// For Harness, we need to use the Harness client to get PR details
+	if p.harness != nil {
+		return p.harness.GetPRDetails(ctx, p.config.Repo, p.config.PRNumber)
+	}
+
+	// For other providers, we can use go-scm
+	pr, _, err := p.client.PullRequests.Find(ctx, p.config.Repo, p.config.PRNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return &harness.PRDetails{
+		SourceSHA: pr.Sha,
+		TargetSHA: pr.Base.Sha,
+	}, nil
 }
 
 func (p *Plugin) createComment(ctx context.Context) error {

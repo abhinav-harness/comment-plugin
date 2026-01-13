@@ -38,15 +38,16 @@ type Config struct {
 	DryRun bool `envconfig:"DRY_RUN"`
 }
 
-// CodeComment represents a single code comment from the JSON file
-type CodeComment struct {
-	Text            string `json:"text"`
-	LineStart       int    `json:"line_start"`
-	LineEnd         int    `json:"line_end"`
-	LineStartNew    bool   `json:"line_start_new"`
-	LineEndNew      bool   `json:"line_end_new"`
-	Path            string `json:"path"`
-	SourceCommitSHA string `json:"source_commit_sha"`
-	TargetCommitSHA string `json:"target_commit_sha"`
-	ParentID        int    `json:"parent_id,omitempty"`
+// ReviewsFile represents the top-level structure of the reviews JSON file
+type ReviewsFile struct {
+	Reviews []ReviewComment `json:"reviews"`
+}
+
+// ReviewComment represents a single review comment from the JSON file
+type ReviewComment struct {
+	FilePath        string `json:"file_path"`
+	LineNumberStart int    `json:"line_number_start"`
+	LineNumberEnd   int    `json:"line_number_end"`
+	Type            string `json:"type"` // issue|performance|scalability|code_smell|etc
+	Review          string `json:"review"`
 }

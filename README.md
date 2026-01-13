@@ -101,31 +101,40 @@ steps:
       harness_account_id: ACCOUNT_ID
       repo: my-repo
       pr_number: ${PR_NUMBER}
-      comments_file: /path/to/comments.json
+      comments_file: /path/to/reviews.json
 ```
 
 **JSON file format:**
 
 ```json
-[
-  {
-    "text": "Consider refactoring this function for better performance",
-    "line_start": 42,
-    "line_end": 42,
-    "path": "src/main.go",
-    "source_commit_sha": "abc123...",
-    "target_commit_sha": "def456..."
-  },
-  {
-    "text": "This could cause a memory leak",
-    "line_start": 100,
-    "line_end": 105,
-    "path": "src/utils.go",
-    "source_commit_sha": "abc123...",
-    "target_commit_sha": "def456..."
-  }
-]
+{
+  "reviews": [
+    {
+      "file_path": "src/main.go",
+      "line_number_start": 42,
+      "line_number_end": 42,
+      "type": "performance",
+      "review": "Consider refactoring this function for better performance"
+    },
+    {
+      "file_path": "src/utils.go",
+      "line_number_start": 100,
+      "line_number_end": 105,
+      "type": "issue",
+      "review": "This could cause a memory leak"
+    },
+    {
+      "file_path": "src/api.go",
+      "line_number_start": 200,
+      "line_number_end": 200,
+      "type": "scalability",
+      "review": "This API call should be rate limited"
+    }
+  ]
+}
 ```
+
+**Supported review types:** `issue`, `performance`, `scalability`, `code_smell`, or any custom category
 
 ### Harness CI Pipeline
 

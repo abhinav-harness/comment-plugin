@@ -115,6 +115,12 @@ type prInfo struct {
 	MergeBaseSHA string `json:"merge_base_sha"`
 }
 
+// PRDetails holds PR details for external use
+type PRDetails struct {
+	SourceSHA string
+	TargetSHA string
+}
+
 func (c *Client) getPR(ctx context.Context, repo string, prNumber int) (*prInfo, error) {
 	path := c.apiPath(repo, fmt.Sprintf("pullreq/%d", prNumber))
 
@@ -136,34 +142,36 @@ func (c *Client) getPR(ctx context.Context, repo string, prNumber int) (*prInfo,
 	return &pr, nil
 }
 
-// CodeComment represents a code comment with all fields
-type CodeComment struct {
-	Text            string `json:"text"`
-	LineStart       int    `json:"line_start"`
-	LineEnd         int    `json:"line_end"`
-	LineStartNew    bool   `json:"line_start_new"`
-	LineEndNew      bool   `json:"line_end_new"`
-	Path            string `json:"path"`
-	SourceCommitSHA string `json:"source_commit_sha"`
-	TargetCommitSHA string `json:"target_commit_sha"`
-	ParentID        int    `json:"parent_id,omitempty"`
-}
-
-// CreateCodeComment creates a code comment with full control over all fields
-func (c *Client) CreateCodeComment(ctx context.Context, repo string, prNumber int, comment CodeComment) error {
-	path := c.apiPath(repo, fmt.Sprintf("pullreq/%d/comments", prNumber))
-
-	payload := map[string]interface{}{
-		"text":              comment.Text,
-		"path":              comment.Path,
-		"line_start":        comment.LineStart,
-		"line_end":          comment.LineEnd,
-		"source_commit_sha": comment.SourceCommitSHA,
-		"target_commit_sha": comment.TargetCommitSHA,
+// GetPRDetails retrieves PR details including commit SHAs
+func (c *Client) GetPRDetails(ctx context.Context, repo string, prNumber int) (*PRDetails, error) {
+	pr, err := c.getPR(ctx, repo, prNumber)
+	if err != nil {
+		return nil, err
 	}
 
-	if comment.ParentID > 0 {
-		payload["parent_id"] = comment.ParentID
+	return &PRDetails{
+		SourceSHA: pr.SourceSHA,
+		TargetSHA: pr.MergeBaseSHA,
+	}, nil
+}
+
+// CreateReviewComment creates a review comment on a specific file/line
+func (c *Client) CreateReviewComment(ctx context.Context, repo string, prNumber int, filePath string, lineStart, lineEnd int, reviewType, reviewText, sourceSHA, targetSHA string) error {
+	path := c.apiPath(repo, fmt.Sprintf("pullreq/%d/comments", prNumber))
+
+	// Format the comment text with type prefix
+	commentText := reviewText
+	if reviewType != "" {
+		commentText = fmt.Sprintf("**%s:** %s", reviewType, reviewText)
+	}
+
+	payload := map[string]interface{}{
+		"text":              commentText,
+		"path":              filePath,
+		"line_start":        lineStart,
+		"line_end":          lineEnd,
+		"source_commit_sha": sourceSHA,
+		"target_commit_sha": targetSHA,
 	}
 
 	resp, err := c.do(ctx, http.MethodPost, path, payload)
@@ -173,26 +181,15 @@ func (c *Client) CreateCodeComment(ctx context.Context, repo string, prNumber in
 	defer resp.Body.Close()
 
 	if err := c.checkResponse(resp); err != nil {
-		return fmt.Errorf("failed to create code comment: %w", err)
+		return fmt.Errorf("failed to create review comment: %w", err)
 	}
 
 	c.log.WithFields(logrus.Fields{
-		"file":       comment.Path,
-		"line_start": comment.LineStart,
-		"line_end":   comment.LineEnd,
-	}).Info("created code comment")
-	return nil
-}
-
-// CreateCodeComments creates multiple code comments from a slice
-func (c *Client) CreateCodeComments(ctx context.Context, repo string, prNumber int, comments []CodeComment) error {
-	for i, comment := range comments {
-		if err := c.CreateCodeComment(ctx, repo, prNumber, comment); err != nil {
-			c.log.WithError(err).WithField("index", i).Warn("failed to create comment")
-			// Continue with remaining comments
-		}
-	}
-	c.log.WithField("count", len(comments)).Info("finished creating code comments")
+		"file":       filePath,
+		"line_start": lineStart,
+		"line_end":   lineEnd,
+		"type":       reviewType,
+	}).Info("created review comment")
 	return nil
 }
 
