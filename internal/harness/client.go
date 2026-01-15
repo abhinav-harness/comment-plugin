@@ -289,7 +289,8 @@ func (c *Client) CreateStatus(ctx context.Context, repo, commitSHA, state, statu
 
 func (c *Client) apiPath(repo, suffix string) string {
 	repoPath := c.buildRepoPath(repo)
-	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, url.PathEscape(repoPath), suffix)
+	// Don't URL-encode the repo path - it contains slashes that need to remain as-is
+	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, repoPath, suffix)
 
 	// Add routingId query parameter
 	if c.config.AccountID != "" {
@@ -300,7 +301,7 @@ func (c *Client) apiPath(repo, suffix string) string {
 		"repo":      repo,
 		"repo_path": repoPath,
 		"api_url":   path,
-	}).Debug("constructed API path")
+	}).Info("API request URL")
 
 	return path
 }
