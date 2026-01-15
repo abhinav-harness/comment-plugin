@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"net/url"
 	"os"
+	"strings"
 
 	"github.com/abhinav-harness/comment-plugin/internal/plugin"
 	"github.com/joho/godotenv"
@@ -34,6 +36,20 @@ func main() {
 	}
 	if cfg.HarnessProjectID == "" {
 		cfg.HarnessProjectID = os.Getenv("HARNESS_PROJECT_ID")
+	}
+
+	// Extract base URL from HARNESS_STO_SERVICE_ENDPOINT if SCM_ENDPOINT is not set
+	// e.g., "https://qa.harness.io/prod1/sto/" -> "https://qa.harness.io"
+	if cfg.SCMEndpoint == "" {
+		if stoEndpoint := os.Getenv("HARNESS_STO_SERVICE_ENDPOINT"); stoEndpoint != "" {
+			if parsed, err := url.Parse(stoEndpoint); err == nil {
+				cfg.SCMEndpoint = strings.TrimSuffix(parsed.Scheme+"://"+parsed.Host, "/")
+				logrus.WithFields(logrus.Fields{
+					"sto_endpoint": stoEndpoint,
+					"base_url":     cfg.SCMEndpoint,
+				}).Debug("extracted base URL from HARNESS_STO_SERVICE_ENDPOINT")
+			}
+		}
 	}
 
 	// Set log level
