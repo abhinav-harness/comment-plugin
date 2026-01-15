@@ -288,30 +288,68 @@ func (c *Client) CreateStatus(ctx context.Context, repo, commitSHA, state, statu
 }
 
 func (c *Client) apiPath(repo, suffix string) string {
-	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, repo, suffix)
+	// Parse repo format to determine level:
+	// - "reponame"         -> project level (use org + project from config)
+	// - "org.reponame"     -> org level (use org from name, no project)
+	// - "account.reponame" -> account level (no org/project)
+	repoName, orgID, projectID, level := c.parseRepoFormat(repo)
 
-	// Add routingId and optionally projectIdentifier, accountIdentifier, orgIdentifier as query parameters
+	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, repoName, suffix)
+
+	// Add query parameters based on level
 	queryParams := url.Values{}
 	if c.config.AccountID != "" {
 		queryParams.Set("routingId", c.config.AccountID)
 		queryParams.Set("accountIdentifier", c.config.AccountID)
 	}
-	if c.config.OrgID != "" {
-		queryParams.Set("orgIdentifier", c.config.OrgID)
+	if orgID != "" {
+		queryParams.Set("orgIdentifier", orgID)
 	}
-	if c.config.ProjectID != "" {
-		queryParams.Set("projectIdentifier", c.config.ProjectID)
+	if projectID != "" {
+		queryParams.Set("projectIdentifier", projectID)
 	}
 	if len(queryParams) > 0 {
 		path = fmt.Sprintf("%s?%s", path, queryParams.Encode())
 	}
 
 	c.log.WithFields(logrus.Fields{
-		"repo":    repo,
-		"api_url": path,
+		"repo":       repo,
+		"repo_name":  repoName,
+		"level":      level,
+		"org_id":     orgID,
+		"project_id": projectID,
+		"api_url":    path,
 	}).Info("API request URL")
 
 	return path
+}
+
+// parseRepoFormat parses the repo string to determine the level and extract components
+// Returns: repoName, orgID, projectID, level
+func (c *Client) parseRepoFormat(repo string) (string, string, string, string) {
+	parts := strings.Split(repo, ".")
+
+	switch len(parts) {
+	case 1:
+		// "reponame" -> project level, use org and project from config
+		return repo, c.config.OrgID, c.config.ProjectID, "project"
+
+	case 2:
+		prefix := strings.ToLower(parts[0])
+		repoName := parts[1]
+
+		if prefix == "account" {
+			// "account.reponame" -> account level, no org/project
+			return repoName, "", "", "account"
+		}
+		// "org.reponame" -> org level, use prefix as org, no project
+		return repoName, parts[0], "", "org"
+
+	default:
+		// Unexpected format, treat as project level
+		c.log.WithField("repo", repo).Warn("unexpected repo format, treating as project level")
+		return repo, c.config.OrgID, c.config.ProjectID, "project"
+	}
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
