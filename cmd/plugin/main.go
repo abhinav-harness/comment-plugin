@@ -25,6 +25,17 @@ func main() {
 		logrus.WithError(err).Fatal("failed to parse configuration")
 	}
 
+	// Also check for HARNESS_* env vars directly (without PLUGIN_ prefix)
+	if cfg.HarnessAccountID == "" {
+		cfg.HarnessAccountID = os.Getenv("HARNESS_ACCOUNT_ID")
+	}
+	if cfg.HarnessOrgID == "" {
+		cfg.HarnessOrgID = os.Getenv("HARNESS_ORG_ID")
+	}
+	if cfg.HarnessProjectID == "" {
+		cfg.HarnessProjectID = os.Getenv("HARNESS_PROJECT_ID")
+	}
+
 	// Set log level
 	if cfg.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
