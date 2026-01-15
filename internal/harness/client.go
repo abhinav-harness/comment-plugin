@@ -289,8 +289,10 @@ func (c *Client) CreateStatus(ctx context.Context, repo, commitSHA, state, statu
 
 func (c *Client) apiPath(repo, suffix string) string {
 	repoPath := c.buildRepoPath(repo)
-	// Don't URL-encode the repo path - it contains slashes that need to remain as-is
-	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, repoPath, suffix)
+	// Encode the + character as %2B (it's interpreted as space if unencoded)
+	// but keep slashes intact for the path structure
+	encodedRepoPath := strings.ReplaceAll(repoPath, "+", "%2B")
+	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, encodedRepoPath, suffix)
 
 	// Add routingId query parameter
 	if c.config.AccountID != "" {
@@ -298,9 +300,10 @@ func (c *Client) apiPath(repo, suffix string) string {
 	}
 
 	c.log.WithFields(logrus.Fields{
-		"repo":      repo,
-		"repo_path": repoPath,
-		"api_url":   path,
+		"repo":             repo,
+		"repo_path":        repoPath,
+		"encoded_repo_path": encodedRepoPath,
+		"api_url":          path,
 	}).Info("API request URL")
 
 	return path
