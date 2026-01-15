@@ -38,6 +38,11 @@ func main() {
 		cfg.HarnessProjectID = os.Getenv("HARNESS_PROJECT_ID")
 	}
 
+	// Fallback to DRONE_REPO_SCM for SCM provider
+	if cfg.SCMProvider == "" {
+		cfg.SCMProvider = os.Getenv("DRONE_REPO_SCM")
+	}
+
 	// Extract base URL from HARNESS_STO_SERVICE_ENDPOINT if SCM_ENDPOINT is not set
 	// e.g., "https://qa.harness.io/prod1/sto/" -> "https://qa.harness.io"
 	if cfg.SCMEndpoint == "" {
