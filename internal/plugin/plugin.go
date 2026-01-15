@@ -62,7 +62,22 @@ func New(cfg Config) (*Plugin, error) {
 
 // Execute runs the plugin
 func (p *Plugin) Execute(ctx context.Context) error {
-	p.log.Info("executing comment plugin")
+	// Log all input configuration for debugging
+	p.log.WithFields(logrus.Fields{
+		"scm_provider":       p.config.SCMProvider,
+		"scm_endpoint":       p.config.SCMEndpoint,
+		"repo":               p.config.Repo,
+		"pr_number":          p.config.PRNumber,
+		"commit_sha":         p.config.CommitSHA,
+		"harness_account_id": p.config.HarnessAccountID,
+		"harness_org_id":     p.config.HarnessOrgID,
+		"harness_project_id": p.config.HarnessProjectID,
+		"comments_file":      p.config.CommentsFile,
+		"file_path":          p.config.FilePath,
+		"line":               p.config.Line,
+		"debug":              p.config.Debug,
+		"dry_run":            p.config.DryRun,
+	}).Info("executing comment plugin with configuration")
 
 	if p.config.DryRun {
 		p.log.WithField("body", p.config.CommentBody).Info("dry run - would post comment")

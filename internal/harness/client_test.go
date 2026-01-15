@@ -3,9 +3,14 @@ package harness
 import (
 	"strings"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 )
 
 func TestNewClient(t *testing.T) {
+	// Suppress logging during tests
+	logrus.SetLevel(logrus.PanicLevel)
+
 	_, err := NewClient(Config{Token: "test"})
 	if err != nil {
 		t.Errorf("NewClient failed: %v", err)
@@ -18,7 +23,10 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestBuildRepoPath(t *testing.T) {
-	c := &Client{config: Config{OrgID: "org", ProjectID: "proj"}}
+	// Suppress logging during tests
+	logrus.SetLevel(logrus.PanicLevel)
+
+	c, _ := NewClient(Config{Token: "test", OrgID: "org", ProjectID: "proj"})
 
 	tests := []struct {
 		repo, expected string
@@ -36,11 +44,26 @@ func TestBuildRepoPath(t *testing.T) {
 }
 
 func TestApiPathWithRoutingId(t *testing.T) {
-	c := &Client{baseURL: "https://app.harness.io", config: Config{OrgID: "o", ProjectID: "p", AccountID: "acc"}}
+	// Suppress logging during tests
+	logrus.SetLevel(logrus.PanicLevel)
+
+	c, _ := NewClient(Config{Token: "test", OrgID: "o", ProjectID: "p", AccountID: "acc"})
 	path := c.apiPath("repo", "pullreq/1/comments")
 
 	if !strings.Contains(path, "routingId=acc") {
 		t.Errorf("apiPath should contain routingId, got: %s", path)
+	}
+}
+
+func TestApiPathWithoutRoutingId(t *testing.T) {
+	// Suppress logging during tests
+	logrus.SetLevel(logrus.PanicLevel)
+
+	c, _ := NewClient(Config{Token: "test", OrgID: "o", ProjectID: "p"})
+	path := c.apiPath("repo", "pullreq/1/comments")
+
+	if strings.Contains(path, "routingId") {
+		t.Errorf("apiPath should not contain routingId when AccountID is empty, got: %s", path)
 	}
 }
 

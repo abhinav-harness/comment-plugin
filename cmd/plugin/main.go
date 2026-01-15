@@ -28,12 +28,30 @@ func main() {
 	// Set log level
 	if cfg.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
+		logrus.Debug("debug logging enabled")
+	}
+
+	// Mask token for logging
+	tokenPreview := ""
+	if len(cfg.Token) > 8 {
+		tokenPreview = cfg.Token[:8] + "..."
+	} else if len(cfg.Token) > 0 {
+		tokenPreview = "***"
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"scm_provider": cfg.SCMProvider,
-		"repo":         cfg.Repo,
-		"pr_number":    cfg.PRNumber,
+		"scm_provider":       cfg.SCMProvider,
+		"scm_endpoint":       cfg.SCMEndpoint,
+		"repo":               cfg.Repo,
+		"pr_number":          cfg.PRNumber,
+		"commit_sha":         cfg.CommitSHA,
+		"harness_account_id": cfg.HarnessAccountID,
+		"harness_org_id":     cfg.HarnessOrgID,
+		"harness_project_id": cfg.HarnessProjectID,
+		"comments_file":      cfg.CommentsFile,
+		"file_path":          cfg.FilePath,
+		"line":               cfg.Line,
+		"token":              tokenPreview,
 	}).Info("starting comment plugin")
 
 	// Create and execute the plugin
