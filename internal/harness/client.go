@@ -288,54 +288,30 @@ func (c *Client) CreateStatus(ctx context.Context, repo, commitSHA, state, statu
 }
 
 func (c *Client) apiPath(repo, suffix string) string {
-	repoPath := c.buildRepoPath(repo)
-	// Encode the + character as %2B (it's interpreted as space if unencoded)
-	// but keep slashes intact for the path structure
-	encodedRepoPath := strings.ReplaceAll(repoPath, "+", "%2B")
-	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, encodedRepoPath, suffix)
+	path := fmt.Sprintf("%s/gateway/code/api/v1/repos/%s/%s", c.baseURL, repo, suffix)
 
-	// Add routingId query parameter
+	// Add routingId and optionally projectIdentifier, accountIdentifier, orgIdentifier as query parameters
+	queryParams := url.Values{}
 	if c.config.AccountID != "" {
-		path = fmt.Sprintf("%s?routingId=%s", path, url.QueryEscape(c.config.AccountID))
+		queryParams.Set("routingId", c.config.AccountID)
+		queryParams.Set("accountIdentifier", c.config.AccountID)
+	}
+	if c.config.OrgID != "" {
+		queryParams.Set("orgIdentifier", c.config.OrgID)
+	}
+	if c.config.ProjectID != "" {
+		queryParams.Set("projectIdentifier", c.config.ProjectID)
+	}
+	if len(queryParams) > 0 {
+		path = fmt.Sprintf("%s?%s", path, queryParams.Encode())
 	}
 
 	c.log.WithFields(logrus.Fields{
-		"repo":             repo,
-		"repo_path":        repoPath,
-		"encoded_repo_path": encodedRepoPath,
-		"api_url":          path,
+		"repo":    repo,
+		"api_url": path,
 	}).Info("API request URL")
 
 	return path
-}
-
-func (c *Client) buildRepoPath(repo string) string {
-	var repoPath string
-
-	// If org/project are provided, build the full path
-	if c.config.OrgID != "" && c.config.ProjectID != "" {
-		parts := strings.Split(repo, "/")
-		switch len(parts) {
-		case 1:
-			repoPath = fmt.Sprintf("%s/%s/+/repos/%s", c.config.OrgID, c.config.ProjectID, repo)
-		case 2:
-			repoPath = fmt.Sprintf("%s/%s/+/repos/%s", c.config.OrgID, parts[0], parts[1])
-		default:
-			repoPath = fmt.Sprintf("%s/%s/+/repos/%s", parts[0], parts[1], strings.Join(parts[2:], "/"))
-		}
-	} else {
-		// For account-level repos, just use the repo name directly
-		repoPath = repo
-	}
-
-	c.log.WithFields(logrus.Fields{
-		"input_repo": repo,
-		"org_id":     c.config.OrgID,
-		"project_id": c.config.ProjectID,
-		"repo_path":  repoPath,
-	}).Debug("built repo path")
-
-	return repoPath
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body interface{}) (*http.Response, error) {
