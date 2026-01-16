@@ -3,7 +3,7 @@ package plugin
 // Config holds the plugin configuration parsed from environment variables
 type Config struct {
 	// SCM Provider
-	SCMProvider string `envconfig:"SCM_PROVIDER" required:"true"` // github, gitlab, bitbucket, gitea, gogs, harness
+	SCMProvider string `envconfig:"SCM_PROVIDER"` // github, gitlab, bitbucket, gitea, gogs, harness
 	SCMEndpoint string `envconfig:"SCM_ENDPOINT"`                 // Custom endpoint for self-hosted
 	Token       string `envconfig:"TOKEN" required:"true"`
 

@@ -43,6 +43,11 @@ func main() {
 		cfg.SCMProvider = os.Getenv("DRONE_REPO_SCM")
 	}
 
+	// Validate required fields after fallbacks
+	if cfg.SCMProvider == "" {
+		logrus.Fatal("SCM_PROVIDER is required (or set DRONE_REPO_SCM)")
+	}
+
 	// Extract base URL from HARNESS_STO_SERVICE_ENDPOINT if SCM_ENDPOINT is not set
 	// e.g., "https://qa.harness.io/prod1/sto/" -> "https://qa.harness.io"
 	if cfg.SCMEndpoint == "" {
