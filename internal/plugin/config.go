@@ -4,7 +4,7 @@ package plugin
 type Config struct {
 	// SCM Provider
 	SCMProvider string `envconfig:"SCM_PROVIDER"` // github, gitlab, bitbucket, gitea, gogs, harness
-	SCMEndpoint string `envconfig:"SCM_ENDPOINT"`                 // Custom endpoint for self-hosted
+	SCMEndpoint string `envconfig:"SCM_ENDPOINT"` // Custom endpoint for self-hosted
 	Token       string `envconfig:"TOKEN" required:"true"`
 
 	// Repository

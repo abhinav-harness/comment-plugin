@@ -374,7 +374,19 @@ func (c *Client) do(ctx context.Context, method, path string, body interface{}) 
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("x-api-key", c.config.Token)
+
+	// Determine authentication method based on token prefix
+	tokenLower := strings.ToLower(c.config.Token)
+	if strings.HasPrefix(tokenLower, "pat.") || strings.HasPrefix(tokenLower, "sat.") {
+		// Use x-api-token header for PAT/SAT tokens
+		req.Header.Set("x-api-token", c.config.Token)
+		c.log.Debug("using x-api-token header for authentication")
+	} else {
+		// Use Authorization header for other tokens
+		req.Header.Set("Authorization", c.config.Token)
+		c.log.Debug("using Authorization header for authentication")
+	}
+
 	if c.config.AccountID != "" {
 		req.Header.Set("Harness-Account", c.config.AccountID)
 	}
