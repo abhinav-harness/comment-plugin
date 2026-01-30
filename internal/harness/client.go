@@ -379,7 +379,7 @@ func (c *Client) do(ctx context.Context, method, path string, body interface{}) 
 	tokenLower := strings.ToLower(c.config.Token)
 	if strings.HasPrefix(tokenLower, "pat.") || strings.HasPrefix(tokenLower, "sat.") {
 		// Use x-api-token header for PAT/SAT tokens
-		req.Header.Set("x-api-token", c.config.Token)
+		req.Header.Set("x-api-key", c.config.Token)
 		c.log.Debug("using x-api-token header for authentication")
 	} else {
 		// Use Authorization header for other tokens
