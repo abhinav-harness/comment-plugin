@@ -27,22 +27,11 @@ func New(cfg Config) (*Plugin, error) {
 
 	provider := scmclient.Provider(strings.ToLower(cfg.SCMProvider))
 
-	client, err := scmclient.NewClient(scmclient.ClientOptions{
-		Provider: provider,
-		Endpoint: cfg.SCMEndpoint,
-		Token:    cfg.Token,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to create SCM client: %w", err)
-	}
-
 	p := &Plugin{
 		config: cfg,
-		client: client,
 		log:    log,
 	}
 
-	// Initialize Harness wrapper if using Harness Code
 	if provider == scmclient.ProviderHarness {
 		harnessClient, err := harness.NewClient(harness.Config{
 			Endpoint:  cfg.SCMEndpoint,
@@ -55,6 +44,16 @@ func New(cfg Config) (*Plugin, error) {
 			return nil, fmt.Errorf("failed to create Harness client: %w", err)
 		}
 		p.harness = harnessClient
+	} else {
+		client, err := scmclient.NewClient(scmclient.ClientOptions{
+			Provider: provider,
+			Endpoint: cfg.SCMEndpoint,
+			Token:    cfg.Token,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SCM client: %w", err)
+		}
+		p.client = client
 	}
 
 	return p, nil
